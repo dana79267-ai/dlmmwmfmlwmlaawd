@@ -1,0 +1,8 @@
+{
+  "name": "resell-lzt-admin-static",
+  "private": true,
+  "description": "Статическая админка для Vercel; API на сервере с ботом.",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resell LZT — админка</title>
+  <link rel="stylesheet" href="/admin.css" />
+<script>window.API_BASE="https://api.example.com";</script>
+</head>
+<body data-page="admin">
+  <header class="site-header admin-topbar">
+    <div class="admin-topbar-box">
+      <h1 class="admin-title">Resell LZT · Админ</h1>
+      <div class="header-actions">
+        <span class="muted" style="font-size:12px;">lzt.market автопокупка</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-group">
+        <div class="admin-sidebar-title">Меню</div>
+        <button type="button" class="admin-sidebar-btn active" data-admin-nav="dashboard">Рабочий стол</button>
+        <button type="button" class="admin-sidebar-btn" data-admin-nav="settings">Настройки магазина</button>
+        <button type="button" class="admin-sidebar-btn" data-admin-nav="categories">Категории</button>
+        <button type="button" class="admin-sidebar-btn" data-admin-nav="products">Товары</button>
+      </div>
+      <div class="admin-sidebar-group">
+        <div class="admin-sidebar-title">Доступ</div>
+        <p class="muted" style="margin:0;font-size:12px;">
+          Ключ сохраняется в браузере после успешной загрузки. С другого ПК вставьте <code>web_admin_secret</code> один раз.
+        </p>
+        <label class="muted" style="font-size:12px;">X-Admin-Key (удалённо)</label>
+        <input id="adminKey" type="password" autocomplete="off" placeholder="из shop_settings.json" />
+        <button type="button" class="btn btn-outline btn-sm" id="btnLoad" style="width:100%;">Обновить данные</button>
+        <div id="log" class="muted" style="margin-top:8px;"></div>
+      </div>
+    </aside>
+
+    <main class="admin-content">
+      <section class="admin-panel is-active" data-admin-section="dashboard">
+        <h2>Рабочий стол</h2>
+        <div class="admin-dashboard-grid">
+          <div class="admin-dash-card"><h4>Категорий</h4><div id="dashCatCount">—</div></div>
+          <div class="admin-dash-card"><h4>Товаров</h4><div id="dashProdCount">—</div></div>
+        </div>
+        <p class="muted">Сервер слушает <code>0.0.0.0</code> по умолчанию — панель доступна в LAN/интернете по IP хоста. Укажите «Публичный URL» в настройках для ссылок в Telegram.</p>
+      </section>
+
+      <section class="admin-panel" data-admin-section="settings">
+        <h2>Настройки магазина</h2>
+        <p class="muted">Файл <code>data/shop_settings.json</code>. Смена порта — перезапуск бота.</p>
+        <div class="admin-form">
+          <label>Приветствие /start (HTML)
+            <textarea id="s_welcome_message" rows="5"></textarea>
+          </label>
+          <label>Режим разметки приветствия
+            <select id="s_welcome_parse_mode"><option value="HTML">HTML</option><option value="Markdown">Markdown</option><option value="">Без разметки</option></select>
+          </label>
+          <label>Текст, если каталог пуст
+            <textarea id="s_empty_catalog_message" rows="2"></textarea>
+          </label>
+          <label>Текст после выдачи (опционально)
+            <textarea id="s_post_delivery_note" rows="2"></textarea>
+          </label>
+          <label>Сообщение, если код Telegram старше лимита
+            <textarea id="s_code_stale_message" rows="2"></textarea>
+          </label>
+          <label>Макс. возраст кода (сек)
+            <input id="s_telegram_code_max_age_seconds" type="number" min="30" value="180" />
+          </label>
+          <div class="row">
+            <label><input type="checkbox" id="s_use_lolz_code_fallback" /> Запасной код LZT API</label>
+            <label><input type="checkbox" id="s_use_telegram_desktop_api" /> API как Telegram Desktop</label>
+          </div>
+
+          <h3>Токены LZT и Telegram</h3>
+          <label>LOLZ_TOKEN (покупка лотов + счета LolzTeam)
+            <input id="s_lolz_token" type="password" autocomplete="off" />
+          </label>
+          <div class="row">
+            <label>Telegram api_id
+              <input id="s_telegram_api_id" />
+            </label>
+            <label>Telegram api_hash
+              <input id="s_telegram_api_hash" type="password" autocomplete="off" />
+            </label>
+          </div>
+
+          <h3>Веб и безопасность</h3>
+          <label>Секрет админки (web_admin_secret)
+            <input id="s_web_admin_secret" type="password" autocomplete="off" />
+          </label>
+          <div class="row">
+            <label>WEB_HOST (0.0.0.0 — все интерфейсы)
+              <input id="s_web_host" />
+            </label>
+            <label>WEB_PORT
+              <input id="s_web_port" type="number" />
+            </label>
+          </div>
+          <label>Публичный URL сайта/панели (без /admin), для кнопок Telegram
+            <input id="s_web_public_url" placeholder="https://your-domain.com" />
+          </label>
+          <label>PUBLIC_BASE_URL (редиректы Platega)
+            <input id="s_public_base_url" />
+          </label>
+
+          <h3>LolzTeam — оплата с баланса (invoice API)</h3>
+          <div class="row">
+            <label>Merchant ID (целое число, 0 = выкл.)
+              <input id="s_lolz_merchant_id" type="number" min="0" value="0" />
+            </label>
+            <label>База API оплат
+              <input id="s_lolz_payments_api_base" />
+            </label>
+          </div>
+
+          <h3>Platega</h3>
+          <div class="row">
+            <label>PLATEGA_MERCHANT_ID
+              <input id="s_platega_merchant_id" />
+            </label>
+            <label>PLATEGA_SECRET
+              <input id="s_platega_secret" type="password" autocomplete="off" />
+            </label>
+          </div>
+          <div class="row">
+            <label>PLATEGA_BASE_URL
+              <input id="s_platega_base_url" />
+            </label>
+            <label>PLATEGA_PAYMENT_METHOD
+              <input id="s_platega_payment_method" type="number" />
+            </label>
+          </div>
+
+          <h3>Crypto Pay (@CryptoBot)</h3>
+          <label>CRYPTO_PAY_TOKEN
+            <input id="s_crypto_pay_token" type="password" autocomplete="off" />
+          </label>
+          <label><input type="checkbox" id="s_crypto_pay_testnet" /> CRYPTO_PAY_TESTNET</label>
+
+          <button type="button" class="btn" id="btnSaveShop">Сохранить настройки</button>
+        </div>
+      </section>
+
+      <section class="admin-panel" data-admin-section="categories">
+        <h2>Категории</h2>
+        <div class="row" style="align-items:end;">
+          <label style="margin:0;">Название
+            <input id="catName" placeholder="Например: Telegram" />
+          </label>
+          <button type="button" class="btn" id="btnAddCat">Добавить</button>
+        </div>
+        <table class="data-table" id="catTable" style="margin-top:16px;">
+          <thead><tr><th>ID</th><th>Название</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="admin-panel" data-admin-section="products">
+        <h2>Товары</h2>
+        <div class="row">
+          <label>Категория
+            <select id="prodCat"></select>
+          </label>
+          <label>Тип товара
+            <select id="prodType">
+              <option value="telegram">Telegram</option>
+              <option value="chatgpt">ChatGPT</option>
+              <option value="other">Другое</option>
+            </select>
+          </label>
+        </div>
+        <label>Название
+          <input id="prodTitle" />
+        </label>
+        <label>Описание (HTML)
+          <textarea id="prodDesc"></textarea>
+        </label>
+        <div class="row">
+          <label>Цена, ₽
+            <input id="prodPrice" type="number" step="0.01" min="0" />
+          </label>
+        </div>
+        <label>Ссылки поиска LZT (через запятую)
+          <textarea id="prodUrls" placeholder="https://lzt.market/telegram/..."></textarea>
+        </label>
+        <button type="button" class="btn" id="btnAddProd">Добавить товар</button>
+        <table class="data-table" id="prodTable" style="margin-top:16px;">
+          <thead>
+            <tr><th>ID</th><th>Тип</th><th>Название</th><th>Цена</th><th>Кат.</th><th>Ссылки</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'resell_lzt_x_admin_key';
+    /** Пусто на своём сервере; на Vercel задаётся при сборке (URL API бота, без /admin). */
+    const API_PREFIX = (typeof window !== 'undefined' && window.API_BASE)
+      ? String(window.API_BASE).replace(/\/$/, '')
+      : '';
+    function apiUrl(p) {
+      const path = p.startsWith('/') ? p : '/' + p;
+      return API_PREFIX + path;
+    }
+    const logEl = document.getElementById('log');
+    function log(m) { logEl.textContent = typeof m === 'string' ? m : JSON.stringify(m, null, 2); }
+
+    function headers() {
+      const k = document.getElementById('adminKey').value.trim();
+      const h = { 'Content-Type': 'application/json' };
+      if (k) h['X-Admin-Key'] = k;
+      return h;
+    }
+
+    function persistKey(secret) {
+      if (!secret) return;
+      localStorage.setItem(STORAGE_KEY, secret);
+      const ak = document.getElementById('adminKey');
+      if (ak) ak.value = secret;
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(apiUrl(path), { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+      const t = await r.text();
+      let j = null;
+      try { j = JSON.parse(t); } catch (_) {}
+      if (!r.ok) throw new Error((j && j.error) ? j.error : (t || String(r.status)));
+      return j;
+    }
+
+    function fillShopForm(s) {
+      document.getElementById('s_welcome_message').value = s.welcome_message || '';
+      document.getElementById('s_welcome_parse_mode').value = s.welcome_parse_mode || 'HTML';
+      document.getElementById('s_empty_catalog_message').value = s.empty_catalog_message || '';
+      document.getElementById('s_post_delivery_note').value = s.post_delivery_note || '';
+      document.getElementById('s_code_stale_message').value = s.code_stale_message || '';
+      document.getElementById('s_telegram_code_max_age_seconds').value = s.telegram_code_max_age_seconds || 180;
+      document.getElementById('s_use_lolz_code_fallback').checked = !!s.use_lolz_code_fallback;
+      document.getElementById('s_use_telegram_desktop_api').checked = s.use_telegram_desktop_api !== false;
+      document.getElementById('s_lolz_token').value = s.lolz_token || '';
+      document.getElementById('s_telegram_api_id').value = s.telegram_api_id || '';
+      document.getElementById('s_telegram_api_hash').value = s.telegram_api_hash || '';
+      document.getElementById('s_web_admin_secret').value = s.web_admin_secret || '';
+      document.getElementById('s_web_host').value = s.web_host || '';
+      document.getElementById('s_web_port').value = s.web_port || 8765;
+      document.getElementById('s_web_public_url').value = s.web_public_url || '';
+      document.getElementById('s_public_base_url').value = s.public_base_url || '';
+      document.getElementById('s_lolz_merchant_id').value = s.lolz_merchant_id ?? 0;
+      document.getElementById('s_lolz_payments_api_base').value = s.lolz_payments_api_base || 'https://prod-api.lzt.market';
+      document.getElementById('s_platega_merchant_id').value = s.platega_merchant_id || '';
+      document.getElementById('s_platega_secret').value = s.platega_secret || '';
+      document.getElementById('s_platega_base_url').value = s.platega_base_url || '';
+      document.getElementById('s_platega_payment_method').value = s.platega_payment_method ?? 2;
+      document.getElementById('s_crypto_pay_token').value = s.crypto_pay_token || '';
+      document.getElementById('s_crypto_pay_testnet').checked = !!s.crypto_pay_testnet;
+      persistKey(s.web_admin_secret || '');
+    }
+
+    function collectShopForm() {
+      return {
+        welcome_message: document.getElementById('s_welcome_message').value,
+        welcome_parse_mode: document.getElementById('s_welcome_parse_mode').value,
+        empty_catalog_message: document.getElementById('s_empty_catalog_message').value,
+        post_delivery_note: document.getElementById('s_post_delivery_note').value,
+        code_stale_message: document.getElementById('s_code_stale_message').value,
+        telegram_code_max_age_seconds: parseInt(document.getElementById('s_telegram_code_max_age_seconds').value || '180', 10),
+        use_lolz_code_fallback: document.getElementById('s_use_lolz_code_fallback').checked,
+        use_telegram_desktop_api: document.getElementById('s_use_telegram_desktop_api').checked,
+        lolz_token: document.getElementById('s_lolz_token').value.trim(),
+        telegram_api_id: document.getElementById('s_telegram_api_id').value.trim(),
+        telegram_api_hash: document.getElementById('s_telegram_api_hash').value.trim(),
+        web_admin_secret: document.getElementById('s_web_admin_secret').value.trim(),
+        web_host: document.getElementById('s_web_host').value.trim(),
+        web_port: parseInt(document.getElementById('s_web_port').value || '8765', 10),
+        web_public_url: document.getElementById('s_web_public_url').value.trim(),
+        public_base_url: document.getElementById('s_public_base_url').value.trim(),
+        lolz_merchant_id: parseInt(document.getElementById('s_lolz_merchant_id').value || '0', 10),
+        lolz_payments_api_base: document.getElementById('s_lolz_payments_api_base').value.trim(),
+        platega_merchant_id: document.getElementById('s_platega_merchant_id').value.trim(),
+        platega_secret: document.getElementById('s_platega_secret').value.trim(),
+        platega_base_url: document.getElementById('s_platega_base_url').value.trim(),
+        platega_payment_method: parseInt(document.getElementById('s_platega_payment_method').value || '2', 10),
+        crypto_pay_token: document.getElementById('s_crypto_pay_token').value.trim(),
+        crypto_pay_testnet: document.getElementById('s_crypto_pay_testnet').checked,
+      };
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function loadAll() {
+      const [shopRes, cRes, pRes] = await Promise.all([
+        api('/api/shop-settings'),
+        api('/api/categories'),
+        api('/api/products'),
+      ]);
+      fillShopForm(shopRes.settings || {});
+      const cats = cRes.categories || [];
+      const prods = pRes.products || [];
+      document.getElementById('dashCatCount').textContent = String(cats.length);
+      document.getElementById('dashProdCount').textContent = String(prods.length);
+
+      const catSel = document.getElementById('prodCat');
+      catSel.innerHTML = cats.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+      const ct = document.querySelector('#catTable tbody');
+      ct.innerHTML = cats.map(c => `<tr>
+        <td><span class="pill">${c.id}</span></td>
+        <td>${escapeHtml(c.name)}</td>
+        <td><button type="button" class="btn btn-danger btn-sm" data-delcat="${c.id}">Удалить</button></td>
+      </tr>`).join('');
+
+      const pt = document.querySelector('#prodTable tbody');
+      pt.innerHTML = prods.map(p => `<tr>
+        <td><span class="pill">${p.id}</span></td>
+        <td>${escapeHtml(p.product_type)}</td>
+        <td>${escapeHtml(p.title)}</td>
+        <td>${p.price_rub}</td>
+        <td>${escapeHtml(p.category_id)}</td>
+        <td style="word-break:break-all;font-size:0.75rem;">${escapeHtml(p.lolz_search_urls)}</td>
+        <td><button type="button" class="btn btn-danger btn-sm" data-delprod="${p.id}">Удалить</button></td>
+      </tr>`).join('');
+
+      document.querySelectorAll('[data-delcat]').forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm('Удалить категорию и товары в ней?')) return;
+          await api('/api/categories/' + btn.dataset.delcat, { method: 'DELETE' });
+          await loadAll();
+        };
+      });
+      document.querySelectorAll('[data-delprod]').forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm('Удалить товар?')) return;
+          await api('/api/products/' + btn.dataset.delprod, { method: 'DELETE' });
+          await loadAll();
+        };
+      });
+
+      log('Готово: ' + cats.length + ' катег., ' + prods.length + ' товар.');
+    }
+
+    document.querySelectorAll('[data-admin-nav]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-admin-nav');
+        document.querySelectorAll('[data-admin-nav]').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.admin-panel').forEach(p => {
+          p.classList.toggle('is-active', p.getAttribute('data-admin-section') === id);
+        });
+      });
+    });
+
+    document.getElementById('btnSaveShop').onclick = async () => {
+      try {
+        const body = collectShopForm();
+        const res = await api('/api/shop-settings', { method: 'PUT', body: JSON.stringify(body) });
+        if (res.settings && res.settings.web_admin_secret) {
+          persistKey(res.settings.web_admin_secret);
+          fillShopForm(res.settings);
+        }
+        log('Настройки сохранены.');
+      } catch (e) { log('Ошибка: ' + e.message); }
+    };
+
+    document.getElementById('btnLoad').onclick = async () => {
+      try { await loadAll(); } catch (e) { log('Ошибка: ' + e.message); }
+    };
+
+    document.getElementById('btnAddCat').onclick = async () => {
+      const name = document.getElementById('catName').value.trim();
+      if (!name) return;
+      try {
+        await api('/api/categories', { method: 'POST', body: JSON.stringify({ name }) });
+        document.getElementById('catName').value = '';
+        await loadAll();
+      } catch (e) { log('Ошибка: ' + e.message); }
+    };
+
+    document.getElementById('btnAddProd').onclick = async () => {
+      const body = {
+        category_id: document.getElementById('prodCat').value,
+        title: document.getElementById('prodTitle').value.trim(),
+        description: document.getElementById('prodDesc').value,
+        price_rub: parseFloat(document.getElementById('prodPrice').value || '0'),
+        product_type: document.getElementById('prodType').value,
+        lolz_search_urls: document.getElementById('prodUrls').value.trim(),
+      };
+      try {
+        await api('/api/products', { method: 'POST', body: JSON.stringify(body) });
+        document.getElementById('prodTitle').value = '';
+        document.getElementById('prodDesc').value = '';
+        document.getElementById('prodPrice').value = '';
+        document.getElementById('prodUrls').value = '';
+        await loadAll();
+      } catch (e) { log('Ошибка: ' + e.message); }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const sk = localStorage.getItem(STORAGE_KEY);
+      if (sk) document.getElementById('adminKey').value = sk;
+      if (API_PREFIX) {
+        log('API бота: ' + API_PREFIX + ' (нужен WEB_CORS_ORIGINS на сервере)');
+      }
+      loadAll().catch(e => log('Ошибка: ' + e.message));
+    });
+  </script>
+</body>
+</html>
